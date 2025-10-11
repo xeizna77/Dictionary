@@ -1,35 +1,20 @@
-# Download-AllRepos.ps1
 param(
-  [string]$User = "mYthicGloryy",
-  [string]$OutDir = "$env:USERPROFILE\${User}_repos"
+  [string]$User = "mYthicGloryy"
 )
 
+# Cek apakah gh CLI sudah terinstall
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   Write-Error "gh CLI tidak ditemukan. Install gh dan login terlebih dahulu."
   exit 1
 }
 
-New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
-Write-Host "Mendapatkan daftar repos untuk $User ..."
+Write-Host "Mengambil daftar repository untuk user '$User' ..."
 
-# Ambil daftar repos dalam format JSON
-$json = gh repo list $User --limit 1000 --json name,defaultBranchRef
+# Ambil daftar repos dari GitHub dalam format JSON
+$json = gh repo list $User --limit 1000 --json name
 $repos = $json | ConvertFrom-Json
 
+# Tampilkan nama-nama repository
 foreach ($r in $repos) {
-  $name = $r.name
-  $branch = if ($r.defaultBranchRef) { $r.defaultBranchRef.name } else { "master" }
-  $out = Join-Path $OutDir ("{0}-{1}.zip" -f $name, $branch)
-  Write-Host "Downloading $name (branch: $branch) -> $out"
-
-  $url = "https://github.com/$User/$name/archive/refs/heads/$branch.zip"
-
-  try {
-    Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing -ErrorAction Stop
-  } catch {
-    Write-Warning "Gagal download via direct URL — mencoba gh api untuk $name"
-    gh api --method GET -H "Accept: application/zip" "/repos/$User/$name/zipball/$branch" --output "$out"
-  }
+  Write-Output $r.name
 }
-
-Write-Host "Selesai. Semua zip tersimpan di: $OutDir"
